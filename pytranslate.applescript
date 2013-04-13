@@ -1,0 +1,42 @@
+(*
+##########################################################################
+#
+# Functions for converting to and from intermediate values for communication with Python.
+#
+# All values passed back and forth between Python and AppleScript are done so through strings.
+# Many of the functions simply coerce values between a string and the native datatype. However,
+# some datatypes (such as lists) must be serialized to an intermediate value and unserialized
+# by the other language.
+#
+# For use with the Python companion ASTranslate (http://github.com/astranslate)
+#
+##########################################################################
+*)(*
+Number
+*)on number_to_applescript(num)	--Convert a Python input string into an AppleScript number	return num as numberend number_to_applescripton number_to_python(num)	--Convert an AppleScript number into a string for passing to Python	return num as stringend number_to_python(*
+Boolean
+*)on bool_to_applescript(bool)	--Convert a Python input string into an AppleScript boolean	return bool as booleanend bool_to_applescripton bool_to_python(bool)	--Convert an AppleScript boolean into a string for passing to Python	return titleCase(bool as string)end bool_to_python(*
+List
+*)on list_to_applescript(str)	--Parse a string passed in from Python through the ASTranslate module	set level to 0	set l to {}	set charCount to length of str		repeat with i from 1 to charCount		set c to character i of str				if (level is 1) and ((c is "|") or (i = charCount)) then			set endPos to i - 1			set end of l to (characters startPos thru endPos of str as string)			set startPos to i + 1		else if (c is "{") then			if level is 0 then				set startPos to i + 1			end if			set level to level + 1		else if (c is "}") then			set level to level - 1		end if	end repeat	return lend list_to_applescripton list_to_python(asList)	--Delimit a list into a string value which the Python library will be able to parse.	set str to implode(asList, "|")	return "{" & str & "}"end list_to_python(*
+Date
+*)on date_to_applescript(d)	--Convert an AppleScript date object into a string for Python	return d as stringend date_to_applescripton date_to_python(d)	--Convert a Python input string into an AppleScript date object	return date dend date_to_python(*
+String
+*)on string_to_applescript(pyString)	--Remove Unix quotes from a Python string	if pyString begins with "'" then		if ((count pyString) > 2) then			return (characters 2 thru -2 of pyString) as string		else			return ""		end if	end if	return pyStringend string_to_applescripton string_to_python(str)	--Add Unix quotes to an AppleScript string for Python	return quoted form of strend string_to_python(*
+Dictionary/Associative Array
+*)on array_to_applescript(str)	(*
+	Convert an Associative Array passed in from Python into an Associative Array.
+	The Associative Array is a custom data type inside the ASTranslate/PYTranslate modules.
+	*)	if str begins with "'" then		set str to translate_from_PYString(str)	end if	set array to newAssociativeArray()	array's unserialize(str)	return arrayend array_to_applescripton array_to_python(array)	(*
+	Convert an Associative Array to a string for passing into Python.
+	The Associative Array is a custom data type inside the ASTranslate/PYTranslate modules.
+	*)	return array's serialize()end array_to_pythonon newAssociativeArray()	(*
+	The Associative Array is a custom data type inside the ASTranslate/PYTranslate modules.
+	On the AppleScript side, it is a custom class created to deal with the limitation of not being
+	able to build records dynamically through variables.
+	*)	script AssociativeArray		property keys : {}		property values : {}						on newAssociativeArray()			copy me to x			return x		end newAssociativeArray				on setKey(k, v)			set displayV to v			if class of v is list then				set displayV to "{" & my implode(v, ", ") & "}"			end if			if k is in keys then				set keyIndex to getKeyIndex(k)				set item keyIndex of values to v			else				append(k, v)			end if			return "<" & k & "=" & displayV & ">"		end setKey				on readKey(k)			if k is in keys then				set keyIndex to getKeyIndex(k)				return item keyIndex of values			end if			error "Key '" & k & "' not found"		end readKey				on append(k, v)			set end of keys to k			set end of values to v		end append				on getKeyIndex(k)			repeat with i from 1 to (count keys)				if item i of keys is k then					return i				end if			end repeat			return 0		end getKeyIndex				on getKeys()			return keys		end getKeys				on getValues()			return values		end getValues				on serialize()			set pairList to {}			repeat with i from 1 to (count keys)				set k to item i of keys				set v to item i of values				if class of v is list then					set v to my serializeList(v)				end if				set end of pairList to "<" & k & "=" & v & ">"			end repeat			return pairList as string		end serialize				on unserialize(str)			if ((count str) < 3) or str does not contain "<" or str does not contain ">" then				set errMsg to "Cannot create Associative Array from the string " & quoted form of str				error errMsg number -1001			end if						set str to items 2 thru -2 of str as string			set pairList to my explode(str, "><")			set display to {}			repeat with i from 1 to (count pairList)				set {k, v} to my explode(item i of pairList, "=")				set end of display to setKey(k, v)			end repeat			return display		end unserialize	end scriptend newAssociativeArray(*
+##########################################################################
+#
+# Helper functions
+#
+##########################################################################
+*)--Sub-routine to change the case of text to title case--------------------------------------------------------------------------------on titleCase(theText)	set allWords to my explode(theText, space)		set fixedWords to {}	repeat with i from 1 to (count allWords)		set currWord to item i of allWords		set thisWord to ""		repeat with j from 1 to (count currWord)			if j = 1 then				set thisWord to thisWord & my toUpper(item j of currWord)			else				set thisWord to thisWord & my toLower(item j of currWord)			end if		end repeat		set end of fixedWords to thisWord	end repeat	return my implode(fixedWords, space)end titleCase--Sub-routine to make text lowercase--------------------------------------------------------------------------------on toLower(theText)	set lowerLetters to "abcdefghijklmnopqrstuvwxyz"	set upperLetters to "ABCDEFGHIJKLMNOPQRSTUVWXYZ"		repeat with i from 1 to (count upperLetters)		set theText to my searchAndReplace(theText, item i of upperLetters, item i of lowerLetters)	end repeat	return theTextend toLower--Sub-routine to make text uppercase--------------------------------------------------------------------------------on toUpper(theText)	set lowerLetters to "abcdefghijklmnopqrstuvwxyz"	set upperLetters to "ABCDEFGHIJKLMNOPQRSTUVWXYZ" as Unicode text		repeat with i from 1 to (count lowerLetters)		set theText to my searchAndReplace(theText, item i of lowerLetters, item i of upperLetters)	end repeat	return theTextend toUpper--Sub-routine to search a string for text and replace it with new text--------------------------------------------------------------------------------on searchAndReplace(myString, oldText, newText)	set AppleScript's text item delimiters to oldText	set myList to text items of myString	set AppleScript's text item delimiters to newText	set myString to myList as string	set AppleScript's text item delimiters to ""	return myStringend searchAndReplace--Sub-routine to explode a string into a list--------------------------------------------------------------------------------on explode(theText, theDelim)	set AppleScript's text item delimiters to theDelim	set theList to text items of theText	set AppleScript's text item delimiters to ""	return theListend explode--Sub-routine to join a list into a string--------------------------------------------------------------------------------on implode(theList, theDelim)	set AppleScript's text item delimiters to theDelim	set theText to theList as text	set AppleScript's text item delimiters to ""	return theTextend implode
