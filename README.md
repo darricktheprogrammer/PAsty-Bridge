@@ -5,7 +5,7 @@ A collection of functions for converting values back and forth between Applescri
 
 
 ###Development Note
-PAsty-Bridge uses the [git-flow branching model](http://nvie.com/posts/a-successful-git-branching-model/). If you wish to contribute, do not pull from the master branch. Pull from the `Develop` branch. Any Pull Requests that go straight into `Master` will be denied.
+PAsty-Bridge uses the [git-flow branching model](http://nvie.com/posts/a-successful-git-branching-model/). If you wish to contribute, do not fork from the master branch. Fork from the `Develop` branch. Any Pull Requests that go straight into `Master` will be denied.
 
 
 
