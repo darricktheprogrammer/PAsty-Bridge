@@ -18,17 +18,17 @@ class invalidArrayString(Exception):
 
 
 def to_applescript(pyDict):
-	'''Convert an Associative Array passed in from AppleScript into a Python dictionary'''
+	'''Convert a dictionary into an Associative Array for passing back to AppleScript'''
 	pairs = []
 	for k, v in pyDict.items():
 		if (isinstance(v, types.ListType)):
-			v = list.to_ASList(v)
+			v = list.to_applescript(v)
 		pairs.append("<" + k + "=" + v + ">")
 
 	return "".join(pairs)
 
 def to_python(asArray):
-	'''Convert a dictionary into an Associative Array for passing back to AppleScript'''
+	'''Convert an Associative Array passed in from AppleScript into a Python dictionary'''
 	if (len(asArray) < 3) or ("<" not in asArray) or (">" not in asArray):
 		raise invalidArrayString("'" + str(asArray) + "' is not a valid Array")
 
